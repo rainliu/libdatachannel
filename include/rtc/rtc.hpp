@@ -18,14 +18,6 @@
 #include "track.hpp"
 #include "iceudpmuxlistener.hpp"
 
-#if RTC_ENABLE_WEBSOCKET
-
-// WebSocket
-#include "websocket.hpp"
-#include "websocketserver.hpp"
-
-#endif // RTC_ENABLE_WEBSOCKET
-
 #if RTC_ENABLE_MEDIA
 
 // Media

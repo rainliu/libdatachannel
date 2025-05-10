@@ -32,10 +32,6 @@ std::unordered_map<int, shared_ptr<Track>> trackMap;
 std::unordered_map<int, shared_ptr<RtcpSrReporter>> rtcpSrReporterMap;
 std::unordered_map<int, shared_ptr<RtpPacketizationConfig>> rtpConfigMap;
 #endif
-#if RTC_ENABLE_WEBSOCKET
-std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
-std::unordered_map<int, shared_ptr<WebSocketServer>> webSocketServerMap;
-#endif
 std::unordered_map<int, void *> userPointerMap;
 std::mutex mutex;
 int lastId = 0;
@@ -135,11 +131,6 @@ size_t eraseAll() {
 	rtcpSrReporterMap.clear();
 	rtpConfigMap.clear();
 #endif
-#if RTC_ENABLE_WEBSOCKET
-	count += webSocketMap.size() + webSocketServerMap.size();
-	webSocketMap.clear();
-	webSocketServerMap.clear();
-#endif
 	userPointerMap.clear();
 	return count;
 }
@@ -150,10 +141,6 @@ shared_ptr<Channel> getChannel(int id) {
 		return it->second;
 	if (auto it = trackMap.find(id); it != trackMap.end())
 		return it->second;
-#if RTC_ENABLE_WEBSOCKET
-	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
-		return it->second;
-#endif
 	throw std::invalid_argument("DataChannel, Track, or WebSocket ID does not exist");
 }
 
@@ -171,12 +158,6 @@ void eraseChannel(int id) {
 #endif
 		return;
 	}
-#if RTC_ENABLE_WEBSOCKET
-	if (webSocketMap.erase(id) != 0) {
-		userPointerMap.erase(id);
-		return;
-	}
-#endif
 	throw std::invalid_argument("DataChannel, Track, or WebSocket ID does not exist");
 }
 
@@ -318,56 +299,6 @@ private:
 };
 
 #endif // RTC_ENABLE_MEDIA
-
-#if RTC_ENABLE_WEBSOCKET
-
-shared_ptr<WebSocket> getWebSocket(int id) {
-	std::lock_guard lock(mutex);
-	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
-		return it->second;
-	else
-		throw std::invalid_argument("WebSocket ID does not exist");
-}
-
-int emplaceWebSocket(shared_ptr<WebSocket> ptr) {
-	std::lock_guard lock(mutex);
-	int ws = ++lastId;
-	webSocketMap.emplace(std::make_pair(ws, ptr));
-	userPointerMap.emplace(std::make_pair(ws, nullptr));
-	return ws;
-}
-
-void eraseWebSocket(int ws) {
-	std::lock_guard lock(mutex);
-	if (webSocketMap.erase(ws) == 0)
-		throw std::invalid_argument("WebSocket ID does not exist");
-	userPointerMap.erase(ws);
-}
-
-shared_ptr<WebSocketServer> getWebSocketServer(int id) {
-	std::lock_guard lock(mutex);
-	if (auto it = webSocketServerMap.find(id); it != webSocketServerMap.end())
-		return it->second;
-	else
-		throw std::invalid_argument("WebSocketServer ID does not exist");
-}
-
-int emplaceWebSocketServer(shared_ptr<WebSocketServer> ptr) {
-	std::lock_guard lock(mutex);
-	int wsserver = ++lastId;
-	webSocketServerMap.emplace(std::make_pair(wsserver, ptr));
-	userPointerMap.emplace(std::make_pair(wsserver, nullptr));
-	return wsserver;
-}
-
-void eraseWebSocketServer(int wsserver) {
-	std::lock_guard lock(mutex);
-	if (webSocketServerMap.erase(wsserver) == 0)
-		throw std::invalid_argument("WebSocketServer ID does not exist");
-	userPointerMap.erase(wsserver);
-}
-
-#endif
 
 } // namespace
 
@@ -1542,143 +1473,6 @@ int rtcSetNeedsToSendRtcpSr(int) {
 }
 
 #endif // RTC_ENABLE_MEDIA
-
-#if RTC_ENABLE_WEBSOCKET
-
-int rtcCreateWebSocket(const char *url) {
-	return wrap([&] {
-		auto webSocket = std::make_shared<WebSocket>();
-		webSocket->open(url);
-		return emplaceWebSocket(webSocket);
-	});
-}
-
-int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
-	return wrap([&] {
-		if (!url)
-			throw std::invalid_argument("Unexpected null pointer for URL");
-
-		if (!config)
-			throw std::invalid_argument("Unexpected null pointer for config");
-
-		WebSocket::Configuration c;
-		c.disableTlsVerification = config->disableTlsVerification;
-
-		if (config->proxyServer)
-			c.proxyServer.emplace(config->proxyServer);
-
-		for (int i = 0; i < config->protocolsCount; ++i)
-			c.protocols.emplace_back(string(config->protocols[i]));
-
-		if (config->connectionTimeoutMs > 0)
-			c.connectionTimeout = milliseconds(config->connectionTimeoutMs);
-		else if (config->connectionTimeoutMs < 0)
-			c.connectionTimeout = milliseconds::zero(); // setting to 0 disables,
-			                                            // not setting keeps default
-		if (config->pingIntervalMs > 0)
-			c.pingInterval = milliseconds(config->pingIntervalMs);
-		else if (config->pingIntervalMs < 0)
-			c.pingInterval = milliseconds::zero(); // setting to 0 disables,
-			                                       // not setting keeps default
-		if (config->maxOutstandingPings > 0)
-			c.maxOutstandingPings = config->maxOutstandingPings;
-		else if (config->maxOutstandingPings < 0)
-			c.maxOutstandingPings = 0; // setting to 0 disables, not setting keeps default
-
-		if(config->maxMessageSize > 0)
-			c.maxMessageSize = size_t(config->maxMessageSize);
-
-		auto webSocket = std::make_shared<WebSocket>(std::move(c));
-		webSocket->open(url);
-		return emplaceWebSocket(webSocket);
-	});
-}
-
-int rtcDeleteWebSocket(int ws) {
-	return wrap([&] {
-		auto webSocket = getWebSocket(ws);
-		webSocket->forceClose();
-		webSocket->resetCallbacks(); // not done on close by WebSocket
-		eraseWebSocket(ws);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcGetWebSocketRemoteAddress(int ws, char *buffer, int size) {
-	return wrap([&] {
-		auto webSocket = getWebSocket(ws);
-		if (auto remoteAddress = webSocket->remoteAddress())
-			return copyAndReturn(*remoteAddress, buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcGetWebSocketPath(int ws, char *buffer, int size) {
-	return wrap([&] {
-		auto webSocket = getWebSocket(ws);
-		if (auto path = webSocket->path())
-			return copyAndReturn(*path, buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
-                                          rtcWebSocketClientCallbackFunc cb) {
-	return wrap([&] {
-		if (!config)
-			throw std::invalid_argument("Unexpected null pointer for config");
-
-		if (!cb)
-			throw std::invalid_argument("Unexpected null pointer for client callback");
-
-		WebSocketServer::Configuration c;
-		c.port = config->port;
-		c.enableTls = config->enableTls;
-		c.certificatePemFile = config->certificatePemFile
-		                           ? make_optional(string(config->certificatePemFile))
-		                           : nullopt;
-		c.keyPemFile = config->keyPemFile ? make_optional(string(config->keyPemFile)) : nullopt;
-		c.keyPemPass = config->keyPemPass ? make_optional(string(config->keyPemPass)) : nullopt;
-		c.bindAddress = config->bindAddress ? make_optional(string(config->bindAddress)) : nullopt;
-
-		if(config->maxMessageSize > 0)
-			c.maxMessageSize = size_t(config->maxMessageSize);
-
-		auto webSocketServer = std::make_shared<WebSocketServer>(std::move(c));
-		int wsserver = emplaceWebSocketServer(webSocketServer);
-
-		webSocketServer->onClient([wsserver, cb](shared_ptr<WebSocket> webSocket) {
-			int ws = emplaceWebSocket(webSocket);
-			if (auto ptr = getUserPointer(wsserver)) {
-				rtcSetUserPointer(wsserver, *ptr);
-				cb(wsserver, ws, *ptr);
-			}
-		});
-
-		return wsserver;
-	});
-}
-
-int rtcDeleteWebSocketServer(int wsserver) {
-	return wrap([&] {
-		auto webSocketServer = getWebSocketServer(wsserver);
-		webSocketServer->onClient(nullptr);
-		webSocketServer->stop();
-		eraseWebSocketServer(wsserver);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcGetWebSocketServerPort(int wsserver) {
-	return wrap([&] {
-		auto webSocketServer = getWebSocketServer(wsserver);
-		return int(webSocketServer->port());
-	});
-}
-
-#endif
 
 void rtcPreload() {
 	try {

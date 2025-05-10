@@ -73,8 +73,6 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpreceivingsession.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/track.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/websocketserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
@@ -113,8 +111,6 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtp.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocketserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
@@ -151,20 +147,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollinterrupter.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollservice.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/http.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/httpproxytransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/transport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.cpp
 )
 
 set(LIBDATACHANNEL_IMPL_HEADERS
@@ -186,20 +169,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollinterrupter.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollservice.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/http.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/httpproxytransport.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/transport.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.hpp
 )
 
 set(TESTS_SOURCES
@@ -211,9 +181,6 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/websocketserver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
 
@@ -583,18 +550,12 @@ if(NOT NO_EXAMPLES)
 		add_subdirectory(deps/json EXCLUDE_FROM_ALL)
 	endif()
 
-	if(NOT NO_WEBSOCKET)
-		add_subdirectory(examples/client)
-		add_subdirectory(examples/client-benchmark)
-	endif()
 	if(NOT NO_MEDIA)
 		add_subdirectory(examples/media-receiver)
 		add_subdirectory(examples/media-sender)
 		add_subdirectory(examples/media-sfu)
 	endif()
-	if(NOT NO_MEDIA AND NOT NO_WEBSOCKET)
-    	add_subdirectory(examples/streamer)
-	endif()
+
 	add_subdirectory(examples/copy-paste)
 	add_subdirectory(examples/copy-paste-capi)
 endif()

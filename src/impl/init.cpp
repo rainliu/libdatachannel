@@ -11,15 +11,10 @@
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
 #include "internals.hpp"
-#include "pollservice.hpp"
 #include "sctptransport.hpp"
 #include "threadpool.hpp"
 #include "tls.hpp"
 #include "utils.hpp"
-
-#if RTC_ENABLE_WEBSOCKET
-#include "tlstransport.hpp"
-#endif
 
 #if RTC_ENABLE_MEDIA
 #include "dtlssrtptransport.hpp"
@@ -123,10 +118,6 @@ void Init::doInit() {
 	PLOG_DEBUG << "Spawning " << count << " threads";
 	ThreadPool::Instance().spawn(count);
 
-#if RTC_ENABLE_WEBSOCKET
-	PollService::Instance().start();
-#endif
-
 #if USE_GNUTLS
 	// Nothing to do
 #elif USE_MBEDTLS
@@ -138,9 +129,6 @@ void Init::doInit() {
 	SctpTransport::Init();
 	SctpTransport::SetSettings(mCurrentSctpSettings);
 	DtlsTransport::Init();
-#if RTC_ENABLE_WEBSOCKET
-	TlsTransport::Init();
-#endif
 #if RTC_ENABLE_MEDIA
 	DtlsSrtpTransport::Init();
 #endif
@@ -159,15 +147,9 @@ void Init::doCleanup() {
 
 	ThreadPool::Instance().join();
 	ThreadPool::Instance().clear();
-#if RTC_ENABLE_WEBSOCKET
-	PollService::Instance().join();
-#endif
 
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
-#if RTC_ENABLE_WEBSOCKET
-	TlsTransport::Cleanup();
-#endif
 #if RTC_ENABLE_MEDIA
 	DtlsSrtpTransport::Cleanup();
 #endif
